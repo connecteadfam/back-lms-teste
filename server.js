@@ -479,14 +479,7 @@ app.post("/api/checkout", async (req, res) => {
   const { items, userId } = req.body;
 
   try {
-    const comprasRegistradas = await Promise.all(items.map(async item => {
-      const { rows } = await pool.query(
-        "INSERT INTO compras_cursos (user_id, curso_id, status, periodo, created_at) VALUES ($1, $2, 'pendente', $3, NOW()) RETURNING id",
-        [userId, item.id, item.periodo]
-      );
-      return rows[0].id;
-    }));
-
+    // Cria a preferência de pagamento
     const preference = {
       items: items.map(item => ({
         id: item.id,
@@ -494,11 +487,20 @@ app.post("/api/checkout", async (req, res) => {
         unit_price: item.unit_price,
         quantity: 1,
       })),
-      external_reference: comprasRegistradas.join('-'),
     };
 
     const response = await mercadopago.preferences.create(preference);
-    
+
+    // Após criar a preferência, insere as compras no banco de dados com o link_checkout
+    const comprasRegistradas = await Promise.all(items.map(async item => {
+      const { rows } = await pool.query(
+        "INSERT INTO compras_cursos (user_id, curso_id, status, periodo, created_at, link_checkout) VALUES ($1, $2, 'pendente', $3, NOW(), $4) RETURNING id",
+        [userId, item.id, item.periodo, response.body.init_point]
+      );
+      return rows[0].id;
+    }));
+
+    // Define uma tarefa para atualizar o status da compra para 'Não Realizada' se permanecer pendente após 5 minutos
     comprasRegistradas.forEach(compraId => {
       setTimeout(async () => {
         const { rows } = await pool.query('SELECT status FROM compras_cursos WHERE id = $1', [compraId]);
@@ -508,12 +510,13 @@ app.post("/api/checkout", async (req, res) => {
       }, 300000); // 5 minutos
     });
 
-    res.json({ preferenceId: response.body.id, comprasRegistradas });
+    res.json({ preferenceId: response.body.id, comprasRegistradas, checkoutLink: response.body.init_point });
   } catch (error) {
     console.error("Erro ao criar a preferência de pagamento:", error);
     res.status(500).json({ error: error.toString() });
   }
 });
+
 
 // Função para enviar email com detalhes da compra
 const enviarEmailConfirmacaoCompra = async (email, itensCompra, total, dataCompra) => {
