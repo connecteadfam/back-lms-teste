@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
 const jwtSecret = 'suus02201998##';
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
