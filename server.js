@@ -16,7 +16,7 @@ const pool = new Pool({
 });
 
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://precious-pike-coveralls.cyclic.app', 'https://connect-ead.vercel.app' , 'https://www.connectfam.com.br'],
+  origin: ['http://localhost:3000', 'https://back-lms-teste.onrender.com', 'https://connect-ead.vercel.app' , 'https://www.connectfam.com.br'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
